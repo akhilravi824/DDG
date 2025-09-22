@@ -138,6 +138,7 @@ export default function APRWizard() {
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">APR Tool (Local Preview)</h1>
+      <a class="underline text-blue-600" href="/disclosure/preview">Disclosure Preview</a>
 
       {/* Stepper */}
       <div className="flex items-center gap-2 text-sm">
@@ -266,44 +267,7 @@ export default function APRWizard() {
         </section>
       )}
 
-      {step === 3 && (
-        <section className="space-y-4">
-          <Titled>Results</Titled>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 border rounded">
-              <div><b>Amount Financed (AF):</b> ${AF.toFixed(2)}</div>
-              <div><b>Total of Payments (TOP):</b> ${TOP.toFixed(2)}</div>
-              <div><b>Finance Charge (FC):</b> ${FC.toFixed(2)}</div>
-            </div>
-            <div className="p-3 border rounded">
-              <div><b>APR (calculated):</b> {calc ? `${calc.aprPercent.toFixed(2)}%` : '-'}</div>
-              <div><b>Periodic Rate (i):</b> {calc ? calc.periodicRate.toFixed(6) : '-'}</div>
-            </div>
-          </div>
-          <div className="p-3 border rounded space-y-1">
-            <div className="font-medium">Tolerance Checks (CA regular loans: ±{aprTol}% APR)</div>
-            {disclosedAPRnum !== undefined && calc && (
-              <div>
-                Disclosed APR {disclosedAPRnum}% vs Calc {calc.aprPercent.toFixed(2)}% → {Math.abs(disclosedAPRnum - calc.aprPercent) > aprTol ? <span className="text-red-600">Outside tolerance</span> : <span className="text-green-700">Within tolerance</span>}
-              </div>
-            )}
-            {disclosedFCnum !== undefined && (
-              <div>
-                Disclosed FC ${disclosedFCnum.toFixed(2)} vs Calc ${FC.toFixed(2)} → {/* $5/10/100 rule simplified not shown here */}
-              </div>
-            )}
-            {disclosedTOPnum !== undefined && (
-              <div>
-                Disclosed TOP ${disclosedTOPnum.toFixed(2)} vs Calc ${TOP.toFixed(2)}
-              </div>
-            )}
-          </div>
-          <div className="flex gap-3">
-            <button className="px-4 py-2 rounded border" onClick={()=>setStep(2)}>Back</button>
-            <button className="px-4 py-2 rounded border" onClick={()=>setStep(0)}>Start Over</button>
-          </div>
-        </section>
-      )}
+      undefined
     </main>
   )
 
@@ -316,4 +280,27 @@ export default function APRWizard() {
   function removeStream(i: number) {
     setStreams(prev => prev.filter((_, idx) => idx !== i))
   }
+}
+
+// --- Local PDF generation helper button ---
+function GeneratePdfButton({ enabled, data }: { enabled: boolean; data: any }){
+  return (
+    <button className="bg-black text-white px-4 py-2 rounded" disabled={!enabled} onClick={async()=>{
+      try{
+        const res = await fetch('/api/disclosures/preview', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) })
+        if(!res.ok){ const j = await res.json().catch(()=>({})); alert(j?.error || 'Failed to generate PDF'); return; }
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'disclosure-preview.pdf'
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+      }catch{ alert('Failed to generate PDF') }
+    }}>
+      Generate Disclosure PDF
+    </button>
+  )
 }
